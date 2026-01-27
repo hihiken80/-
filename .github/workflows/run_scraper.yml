@@ -1,4 +1,4 @@
-name: SamsungPop Event Scraper
+name: SamsungPop Node Scraper
 
 on:
   schedule:
@@ -6,19 +6,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  scrape:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          python-version: '3.9'
-      - name: Install dependencies
-        run: |
-          pip install requests beautifulsoup4 lxml selenium webdriver-manager
+          node-version: '18'
+          
+      - name: Install Dependencies
+        run: npm install
+        
       - name: Run Scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python main.py
+        run: node index.js
