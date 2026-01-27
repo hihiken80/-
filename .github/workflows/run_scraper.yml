@@ -2,8 +2,8 @@ name: SamsungPop Event Scraper
 
 on:
   schedule:
-    - cron: '*/20 * * * *'  # 20분마다 실행
-  workflow_dispatch:        # 수동 실행 버튼 생성
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -22,4 +22,3 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
-
