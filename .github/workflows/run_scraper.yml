@@ -2,8 +2,8 @@ name: SamsungPop Event Scraper
 
 on:
   schedule:
-    - cron: '*/20 * * **'' # 3시간마다 실행
-  workflow_dispatch: # 수동 실행 버튼
+    - cron: '*/20 * * * *'  # 20분마다 실행
+  workflow_dispatch:        # 수동 실행 버튼 생성
 
 jobs:
   build:
@@ -16,18 +16,10 @@ jobs:
           python-version: '3.9'
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4
+          pip install requests beautifulsoup4 lxml
       - name: Run Scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
-      - name: Commit and push if changed
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -f last_event.txt ]; then
-            git add last_event.txt
-            git commit -m "Update last event title" || exit 0
-            git push
-          fi
+
