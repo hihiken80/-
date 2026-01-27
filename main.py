@@ -5,33 +5,43 @@ import os
 def send_telegram_msg(text):
     token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-    if not token or not chat_id:
-        print("오류: 환경변수(TOKEN/ID)를 찾을 수 없습니다.")
-        return
+    if not token or not chat_id: return
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    # 전송 결과 로그 남기기
     res = requests.post(url, json=payload)
-    print(f"텔레그램 응답 코드: {res.status_code}")
-    print(f"텔레그램 응답 내용: {res.text}")
+    print(f"텔레그램 응답: {res.status_code}")
 
-# 테스트용 네이버 블로그 RSS (글이 매우 자주 올라오는 공식 블로그)
-rss_url = "https://rss.blog.naver.com/blogcorp.xml" 
+# 삼성증권 이벤트 페이지 (안티-봇 헤더 강화)
+url = "https://www.samsungpop.com/mbw/customer/noticeEvent.do?cmd=eventList"
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Referer': 'https://www.google.com/'
+}
 
 try:
-    print("데이터 가져오기 시도 중...")
-    response = requests.get(rss_url, timeout=15)
-    soup = BeautifulSoup(response.text, 'xml')
-    items = soup.find_all('item')
+    print("삼성증권 데이터 읽기 시작...")
+    response = requests.get(url, headers=headers, timeout=20)
+    # 한글 깨짐 방지
+    response.encoding = 'utf-8' 
+    soup = BeautifulSoup(response.text, 'html.parser')
 
-    if items:
-        title = items[0].find('title').get_text()
-        link = items[0].find('link').get_text()
-        print(f"최신 글 발견: {title}")
-        
-        # 테스트를 위해 중복 체크 없이 무조건 발송
-        msg = f"<b>[블로그 알림 테스트]</b>\n\n제목: {title}\n\n<a href='{link}'>링크 바로가기</a>"
-        send_telegram_msg(msg)
+    # 이벤트 목록 추출 (삼성증권 전용 태그)
+    events = soup.select('.event_table tbody tr')
+    
+    if events:
+        first_event = events[0].select_one('td.subject a')
+        if first_event:
+            title = first_event.get_text(strip=True)
+            print(f"발견한 이벤트 제목: {title}")
+            
+            # 테스트를 위해 중복 체크 파일(last_event.txt) 무시하고 무조건 발송
+            msg = f"<b>[삼성증권 신규 이벤트]</b>\n\n제목: {title}\n\n<a href='{url}'>이벤트 페이지 보기</a>"
+            send_telegram_msg(msg)
     else:
-        print("RSS 항목을 찾을 수 없습니다.")
+        print("페이지 구조가 변경되었거나 접근이 차단되었습니다.")
+
 except Exception as e:
-    print(f"코드 실행 중 에러 발생: {e}")
+    print(f"오류 발생: {e}")
+
