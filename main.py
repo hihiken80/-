@@ -1,5 +1,4 @@
 import requests
-from bs4 import BeautifulSoup
 import os
 
 def send_telegram_msg(text):
@@ -11,51 +10,60 @@ def send_telegram_msg(text):
     res = requests.post(url, json=payload)
     print(f"텔레그램 응답: {res.status_code}")
 
-# 삼성증권 이벤트 주소
-url = "https://www.samsungpop.com/mbw/customer/noticeEvent.do?cmd=eventList"
+# 삼성증권 이벤트 목록 조회 API (보안이 낮은 경로)
+url = "https://www.samsungpop.com/mbw/customer/noticeEvent.do"
+params = {
+    "cmd": "eventList",
+    "MENU_ID": "M1231757761593",
+    "isSearch": "Y"
+}
 
-# 차단을 피하기 위한 헤더 세트
 headers = {
-    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'ko-KR,ko;q=0.8,en-US;q=0.5,en;q=0.3',
-    'Referer': 'https://m.samsungpop.com/',
-    'Connection': 'keep-alive'
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    'Referer': 'https://www.samsungpop.com/',
+    'X-Requested-With': 'XMLHttpRequest'
 }
 
 try:
-    print("데이터 읽기 시도 중...")
-    # 접속 차단을 피하기 위해 세션 유지 방식 사용
-    session = requests.Session()
-    response = session.get(url, headers=headers, timeout=30)
+    print("삼성증권 보안 우회 접속 중...")
+    # POST 방식으로 요청하여 봇 감지 회피
+    response = requests.post(url, headers=headers, params=params, timeout=30)
     response.encoding = 'utf-8'
     
+    from bs4 import BeautifulSoup
     soup = BeautifulSoup(response.text, 'html.parser')
-
-    # 이벤트 테이블 안의 모든 행(tr)을 가져옵니다.
-    events = soup.find_all('tr')
     
-    found = False
+    # 실제 이벤트 데이터가 담긴 테이블 행 추출
+    events = soup.select('table.event_table tbody tr')
+    
     if events:
-        for row in events:
-            # 제목이 들어있는 'subject' 클래스 탐색
-            subject_td = row.find('td', class_='subject')
-            if subject_td:
-                title_tag = subject_td.find('a')
-                if title_tag:
-                    title = title_tag.get_text(strip=True)
-                    print(f"이벤트 발견: {title}")
-                    
-                    # 텔레그램 발송
-                    msg = f"<b>[삼성증권 이벤트]</b>\n\n{title}\n\n<a href='{url}'>페이지 이동</a>"
-                    send_telegram_msg(msg)
-                    found = True
-                    break # 가장 최신 하나만 보내고 종료
+        # 첫 번째 행에서 제목과 날짜 추출
+        latest = events[0]
+        title_element = latest.select_one('td.subject a')
+        
+        if title_element:
+            title = title_element.get_text(strip=True)
+            print(f"최신 이벤트 확인: {title}")
+            
+            # 중복 알림 방지 로직
+            db_file = "last_event.txt"
+            if os.path.exists(db_file):
+                with open(db_file, "r", encoding="utf-8") as f:
+                    if f.read().strip() == title:
+                        print("이미 알림을 보낸 이벤트입니다.")
+                        exit()
 
-    if not found:
-        print("이벤트를 찾지 못했습니다. 구조 분석이 더 필요합니다.")
-        # 만약 차단되었다면 전체 텍스트 일부 출력해서 확인
-        print(f"응답 요약: {response.text[:200]}")
+            # 메시지 구성 및 발송
+            msg = f"<b>[삼성증권 신규 이벤트]</b>\n\n{title}\n\n<a href='https://www.samsungpop.com/mbw/customer/noticeEvent.do?cmd=eventList'>이벤트 페이지 이동</a>"
+            send_telegram_msg(msg)
+            
+            with open(db_file, "w", encoding="utf-8") as f:
+                f.write(title)
+        else:
+            print("데이터 구조가 변경되었습니다. 수동 점검 필요.")
+    else:
+        print("접속은 성공했으나 데이터를 찾지 못했습니다. (보안 차단 가능성)")
 
 except Exception as e:
-    print(f"오류: {e}")
+    print(f"실행 오류: {e}")
+
