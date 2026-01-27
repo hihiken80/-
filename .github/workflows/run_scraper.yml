@@ -16,7 +16,7 @@ jobs:
           python-version: '3.9'
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 lxml
+          pip install requests beautifulsoup4 lxml selenium webdriver-manager
       - name: Run Scraper
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
